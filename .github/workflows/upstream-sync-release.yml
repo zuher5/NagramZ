@@ -209,9 +209,16 @@ jobs:
 
           echo "Creating Release tag: $TAG_NAME"
 
+          printf "%s\n" \
+            "Automated build of NiagramXZ synchronized with upstream NiagramX." \
+            "" \
+            "- **Upstream Commit**: ${{ needs.sync.outputs.upstream_sha }}" \
+            "- **NiagramXZ Commit**: ${{ needs.sync.outputs.head_sha }}" \
+            "- **Features**: Custom Native Android SplashScreen with NiagramX official icon" > release_notes.md
+
           gh release create "$TAG_NAME" apks/*.apk \
             --title "$RELEASE_TITLE" \
-            --notes "Automated build of NiagramXZ synchronized with upstream NiagramX. Upstream Commit: ${{ needs.sync.outputs.upstream_sha }} | Head Commit: ${{ needs.sync.outputs.head_sha }} | Native Splash Screen Enabled" \
+            --notes-file release_notes.md \
             --target dev
 
 
