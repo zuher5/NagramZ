@@ -176,7 +176,7 @@ android {
         }
     }
 
-    def isSigningAvailable = keystorePwd != null && alias != null && pwd != null && !project.hasProperty('withoutSigning') && System.getenv('DEBUG_BUILD') == null
+    def isSigningAvailable = keystorePwd && alias && pwd && !project.hasProperty('withoutSigning') && System.getenv('DEBUG_BUILD') == null
     if (isSigningAvailable) {
         signingConfigs {
             release {
