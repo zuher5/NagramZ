@@ -1,15 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="128dp"
-    android:height="128dp"
-    android:viewportWidth="320"
-    android:viewportHeight="320">
-    <path
-        android:name="circle"
-        android:pathData="M 160 60 C 133.489 60 108.036 70.543 89.289 89.289 C 70.543 108.036 60 133.489 60 160 C 60 186.511 70.543 211.964 89.289 230.711 C 108.036 249.457 133.489 260 160 260 C 186.511 260 211.964 249.457 230.711 230.711 C 249.457 211.964 260 186.511 260 160 C 260 133.489 249.457 108.036 230.711 89.289 C 211.964 70.543 186.511 60 160 60 Z"
-        android:fillColor="#7776bf" />
-    <path
-        android:name="plane"
-        android:pathData="M 105.266 158.944 C 134.418 146.243 153.857 137.87 163.583 133.824 C 191.355 122.273 197.125 120.267 200.886 120.199 C 201.714 120.186 203.563 120.391 204.761 121.363 C 205.773 122.184 206.051 123.293 206.185 124.071 C 206.318 124.85 206.484 126.623 206.352 128.008 C 204.847 143.82 198.335 182.193 195.022 199.903 C 193.62 207.397 190.86 209.91 188.188 210.155 C 182.381 210.69 177.971 206.318 172.347 202.631 C 163.545 196.861 158.573 193.27 150.03 187.64 C 140.157 181.134 146.557 177.558 152.184 171.714 C 153.656 170.184 179.243 146.911 179.738 144.8 C 179.8 144.536 179.858 143.552 179.273 143.032 C 178.688 142.512 177.825 142.69 177.202 142.831 C 176.32 143.032 162.26 152.325 135.022 170.711 C 131.031 173.452 127.416 174.787 124.177 174.717 C 120.607 174.64 113.739 172.698 108.633 171.038 C 102.37 169.003 97.393 167.927 97.826 164.469 C 98.052 162.669 100.532 160.827 105.266 158.944 Z"
-        android:fillColor="#ffffff" />
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Perfect circular base -->
+    <path android:pathData="M256,0 A256,256 0,1 0,256,512 A256,256 0,1 0,256,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="256"
+                android:centerY="246"
+                android:gradientRadius="368"
+                android:startColor="#7776BF"
+                android:centerColor="#9FA9D1"
+                android:endColor="#CCE0F3" />
+        </aapt:attr>
+    </path>
+
+    <!-- NiagramX emblem -->
+    <group
+        android:translateX="256"
+        android:translateY="256"
+        android:scaleX="2.18"
+        android:scaleY="2.18">
+        <group
+            android:translateX="-96"
+            android:translateY="-96">
+
+            <!-- Main white paper-aircraft/body silhouette -->
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M172,55
+                    C165,51 153,47 141,43
+                    C143,55 145,72 146,88
+                    C136,96 124,104 113,111
+                    C101,108 84,100 72,92
+                    L71,125
+                    C74,142 79,163 84,181
+                    C102,181 118,178 132,174
+                    C148,167 159,156 165,147
+                    C173,132 178,116 182,102
+                    C181,84 178,68 172,55 Z"/>
+
+            <path
+                android:fillColor="#0A0A0D"
+                android:pathData="M141,43
+                    C143,56 145,72 146,88
+                    L132,98
+                    L145,101
+                    L133,111
+                    L121,103
+                    L136,92
+                    L133,68
+                    L137,49 Z"/>
+
+            <path
+                android:fillColor="#0A0A0D"
+                android:pathData="M113,111 L129,100 L139,104 L124,114 Z"/>
+
+            <path
+                android:fillColor="@android:color/transparent"
+                android:strokeColor="#CFFDA9"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="M117,15 L127,29 L106,40 L117,56 L101,64
+                    M106,40 L127,29 L124,29
+                    M116,56 L101,64 L108,79"/>
+
+            <!-- Yellow ring -->
+            <path
+                android:fillColor="#FDCB46"
+                android:pathData="M75,35
+                    a12,12 0,1 0,0,24
+                    a12,12 0,1 0,0,-24
+                    M75,41
+                    a6,6 0,1 1,0,12
+                    a6,6 0,1 1,0,-12 Z"/>
+
+            <path
+                android:fillColor="#60BCFF"
+                android:pathData="M15,104
+                    C22,102 29,101 39,104
+                    C29,107 25,111 21,116
+                    C30,113 39,110 50,107
+                    C56,105 60,106 59,111
+                    C55,118 48,124 40,133
+                    C45,130 51,126 56,122
+                    C51,130 45,136 39,140
+                    C43,131 40,124 33,119
+                    C27,115 22,115 17,117
+                    C21,112 20,108 15,104 Z"/>
+
+            <path android:fillColor="#FDCB46"
+                android:pathData="M160,113 A7,7 0,1 0,160,127 A7,7 0,1 0,160,113 Z"/>
+
+            <path android:fillColor="#FDCB46"
+                android:pathData="M115,150 A7,7 0,1 0,115,164 A7,7 0,1 0,115,150 Z"/>
+
+            <path
+                android:fillColor="@android:color/transparent"
+                android:strokeColor="#111116"
+                android:strokeWidth="1.2"
+                android:strokeLineCap="round"
+                android:pathData="M146,88 L132,98 L123,106"/>
+        </group>
+    </group>
 </vector>
