@@ -221,6 +221,8 @@ android {
             matchingFallbacks = ['release', 'staging', 'debug']
             if (isSigningAvailable) {
                 signingConfig = signingConfigs.release
+            } else {
+                signingConfig = signingConfigs.debug
             }
         }
 
@@ -233,6 +235,8 @@ android {
             matchingFallbacks = ['release', 'staging', 'debug']
             if (isSigningAvailable) {
                 signingConfig = signingConfigs.release
+            } else {
+                signingConfig = signingConfigs.debug
             }
         }
     }
