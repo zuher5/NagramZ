@@ -5,5 +5,5 @@
         android:width="128dp"
         android:height="128dp"
         android:gravity="center"
-        android:drawable="@mipmap/icon_9_launcher_round" />
+        android:drawable="@mipmap/splash_icon_round" />
 </layer-list>
