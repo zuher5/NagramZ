@@ -5,5 +5,5 @@
         android:width="128dp"
         android:height="128dp"
         android:gravity="center"
-        android:drawable="@drawable/splash_icon_niagram_vector" />
+        android:drawable="@mipmap/ic_launcher_nagram_round" />
 </layer-list>
