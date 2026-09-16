@@ -165,12 +165,7 @@ jobs:
           if [ -n "$LOCAL_PROPERTIES" ]; then
             echo "$LOCAL_PROPERTIES" | base64 -d >> local.properties
           fi
-          SIGNING_FLAGS=""
-          if [ -z "$KEYSTORE_PASS" ] && [ -z "$LOCAL_PROPERTIES" ]; then
-            echo "No signing credentials provided. Building unsigned/withoutSigning APK."
-            SIGNING_FLAGS="-PwithoutSigning"
-          fi
-          ./gradlew TMessagesProj:assembleStaging $SIGNING_FLAGS --build-cache --parallel
+          ./gradlew TMessagesProj:assembleStaging --build-cache --parallel
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
