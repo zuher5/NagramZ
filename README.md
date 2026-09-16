@@ -1,8 +1,8 @@
-# NiagramX
+# NagramZ
 
 [![Crowdin](https://badges.crowdin.net/NagramX/localized.svg)](https://crowdin.com/project/NagramX)
-[![GitHub Release](https://img.shields.io/github/v/release/HSSkyBoy/NiagramX?include_prereleases&style=flat-square)](https://github.com/HSSkyBoy/NiagramX/releases)
-[![Telegram Channel](https://img.shields.io/badge/Telegram-Channel-blue?logo=telegram&style=flat-square)](https://t.me/NiagramX)
+[![GitHub Release](https://img.shields.io/github/v/release/zuher5/NagramZ?include_prereleases&style=flat-square)](https://github.com/zuher5/NagramZ/releases)
+[![Telegram Channel](https://img.shields.io/badge/Telegram-Channel-blue?logo=telegram&style=flat-square)](https://github.com/zuher5/NagramZ/releases)
 [![MinSDK](https://img.shields.io/badge/Android-7.0%2B%20(API%2024%2B)-green?logo=android&style=flat-square)](https://developer.android.com/about/versions/nougat)
 
 An enhanced, high-performance Telegram client variant based on [Nagram](https://github.com/NextAlone/Nagram), [Nekogram](https://github.com/Nekogram/Nekogram), and [NagramX](https://github.com/risin42/NagramX), refined with modern UI enhancements, expanded customization, and aggressive performance optimizations.
@@ -33,8 +33,8 @@ An enhanced, high-performance Telegram client variant based on [Nagram](https://
 
 Official releases and beta builds can be obtained from:
 
-- **Beta Builds**: [Telegram Channel (@NiagramX)](https://t.me/NiagramX)
-- **Stable Releases**: [GitHub Releases](https://github.com/HSSkyBoy/NiagramX/releases)
+- **Beta Builds**: [GitHub Releases (NagramZ)](https://github.com/zuher5/NagramZ/releases)
+- **Stable Releases**: [GitHub Releases](https://github.com/zuher5/NagramZ/releases)
 
 ### Verify APK Signature
 
@@ -60,8 +60,8 @@ Official release packages are signed with the official certificate:
 
 ```bash
 # Clone repository with all submodules
-git clone --recursive --shallow-submodules https://github.com/HSSkyBoy/NiagramX.git NiagramX
-cd NiagramX
+git clone --recursive --shallow-submodules https://github.com/zuher5/NagramZ.git NagramZ
+cd NagramZ
 
 # If submodules were not initialized during clone
 git submodule update --init --recursive --depth=1
