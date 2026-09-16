@@ -170,7 +170,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NiagramXZ-${{ matrix.target }}
+          name: NagramZ-${{ matrix.target }}
           path: TMessagesProj/build/outputs/apk/staging/*.apk
 
   release:
@@ -200,16 +200,16 @@ jobs:
           SHORT_SHA=${COMMIT_SHA:0:7}
           
           TAG_NAME="v${APP_VER_NAME}.${VER_CODE}-${SHORT_SHA}"
-          RELEASE_TITLE="NiagramXZ ${APP_VER_NAME} (${VER_CODE})"
+          RELEASE_TITLE="NagramZ ${APP_VER_NAME} (${VER_CODE})"
 
           echo "Creating Release tag: $TAG_NAME"
 
           printf "%s\n" \
-            "Automated build of NiagramXZ synchronized with upstream NiagramX." \
+            "Automated build of NagramZ synchronized with upstream NiagramX." \
             "" \
             "- **Upstream Commit**: ${{ needs.sync.outputs.upstream_sha }}" \
-            "- **NiagramXZ Commit**: ${{ needs.sync.outputs.head_sha }}" \
-            "- **Features**: Custom Native Android SplashScreen with NiagramX official icon" > release_notes.md
+            "- **NagramZ Commit**: ${{ needs.sync.outputs.head_sha }}" \
+            "- **Features**: Nagram animated splash screen and launcher icon" > release_notes.md
 
           gh release create "$TAG_NAME" apks/*.apk \
             --title "$RELEASE_TITLE" \
