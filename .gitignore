@@ -15,4 +15,5 @@ TMessagesProj/jniRes/
 TMessagesProj/afat/
 TMessagesProj/jni/ffmpeg/build_android
 *.keystore
+!TMessagesProj/release.keystore
 *.jks
