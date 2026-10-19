@@ -17,3 +17,4 @@ TMessagesProj/jni/ffmpeg/build_android
 *.keystore
 !TMessagesProj/release.keystore
 *.jks
+__pycache__/
