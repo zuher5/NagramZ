@@ -28,7 +28,7 @@ jobs:
       head_sha: ${{ steps.sync_step.outputs.head_sha }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: dev
           fetch-depth: 0
@@ -42,6 +42,7 @@ jobs:
       - name: Check and Sync Upstream
         id: sync_step
         run: |
+          set -uo pipefail
           git remote add upstream https://github.com/HSSkyBoy/NiagramX.git || true
           git fetch upstream dev
 
@@ -68,18 +69,62 @@ jobs:
             exit 0
           fi
 
-          echo "New upstream commits detected. Reapplying custom commits via rebase..."
-          if git rebase upstream/dev; then
-            echo "Rebase succeeded cleanly."
-            NEW_HEAD=$(git rev-parse HEAD)
-            git push origin dev --force-with-lease -o ci.skip
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-            echo "head_sha=$NEW_HEAD" >> "$GITHUB_OUTPUT"
+          echo "New upstream commits detected. Merging upstream/dev..."
+          # -X ours: hunk yang bentrok memakai versi fork (branding + fitur kita),
+          # hunk yang tidak bentrok tetap memakai versi upstream.
+          if git merge --no-edit -X ours upstream/dev; then
+            echo "Merge finished without manual conflicts."
           else
-            echo "::error::Rebase failed due to merge conflicts! Aborting to keep repository safe."
-            git rebase --abort
+            echo "::warning::Merge left unresolved paths, keeping the fork version of those files."
+            git diff --name-only --diff-filter=U | while read -r path; do
+              echo "  resolving in favour of fork: $path"
+              git checkout --ours -- "$path" 2>/dev/null || git rm --cached -f "$path" 2>/dev/null || true
+              git add "$path" 2>/dev/null || true
+            done
+            if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+              echo "::error::Could not resolve all conflicts, aborting."
+              exit 1
+            fi
+            git commit --no-edit -m "chore(sync): merge upstream/dev (keep fork customisations)"
+          fi
+
+          NEW_HEAD=$(git rev-parse HEAD)
+          echo "Merged head: $NEW_HEAD"
+          echo "head_sha=$NEW_HEAD" >> "$GITHUB_OUTPUT"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify fork guardrails
+        run: |
+          set -uo pipefail
+          fail=0
+          if ! grep -q '^APP_PACKAGE=top.nkbe.niagram$' gradle.properties; then
+            echo "::error::APP_PACKAGE changed, in-place updates would break"
+            fail=1
+          fi
+          if [ ! -f TMessagesProj/release.keystore ]; then
+            echo "::error::TMessagesProj/release.keystore is missing"
+            fail=1
+          fi
+          if ! git ls-files --error-unmatch TMessagesProj/release.keystore >/dev/null 2>&1; then
+            echo "::error::TMessagesProj/release.keystore is not tracked by git"
+            fail=1
+          fi
+          if ! grep -q 'nagramz123' TMessagesProj/build.gradle; then
+            echo "::error::signing configuration is missing from build.gradle"
+            fail=1
+          fi
+          if [ ! -x ci/apply-branding.sh ]; then
+            echo "::error::ci/apply-branding.sh is missing or not executable"
+            fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Fork guardrails failed, nothing was pushed."
             exit 1
           fi
+          echo "All fork guardrails passed."
+
+      - name: Push merged branch
+        run: git push origin dev -o ci.skip
 
   build:
     name: Build APK (${{ matrix.target }})
@@ -89,11 +134,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [arm64-v8a, universal]
+        target: [arm64-v8a]
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_HARDLINK: "true"
-      CCACHE_NOHASHDIR: "true"
+      CCACHE_NOSANDBOX: "true"
       CCACHE_MAXSIZE: "10G"
       CCACHE_SLOPPINESS: "include_file_ctime,include_file_mtime,time_macros"
       CCACHE_BASEDIR: "${{ github.workspace }}"
@@ -208,15 +253,31 @@ jobs:
           path: apks
           merge-multiple: true
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Verify APK signature and branding
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet --disable-pip-version-check cryptography
+          for apk in apks/*.apk; do
+            echo "::group::Verifying $(basename "$apk")"
+            python ci/verify-apk.py "$apk"
+            echo "::endgroup::"
+          done
+
       - name: Determine Version and Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_SHA: ${{ needs.sync.outputs.head_sha }}
         run: |
+          set -euo pipefail
           APP_VER_NAME=$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d'=' -f2 | tr -d '\r')
           VER_CODE=$(grep 'def verCode =' TMessagesProj/build.gradle | head -n1 | tr -dc '0-9')
           SHORT_SHA=${COMMIT_SHA:0:7}
-          
+
           TAG_NAME="v${APP_VER_NAME}.${VER_CODE}-${SHORT_SHA}"
           RELEASE_TITLE="NagramZ ${APP_VER_NAME} (${VER_CODE})"
 
@@ -227,11 +288,11 @@ jobs:
             "" \
             "- **Upstream Commit**: ${{ needs.sync.outputs.upstream_sha }}" \
             "- **NagramZ Commit**: ${{ needs.sync.outputs.head_sha }}" \
+            "- **Target ABI**: arm64-v8a" \
+            "- **Signature**: permanent NagramZ release certificate (SHA-256 \`abc77e8ae8b20436f66b7228bc466b47fc551fae2dc27a5531e7f3c33ff568fc\`)" \
             "- **Features**: Nagram animated splash screen and launcher icon" > release_notes.md
 
           gh release create "$TAG_NAME" apks/*.apk \
             --title "$RELEASE_TITLE" \
             --notes-file release_notes.md \
             --target dev
-
-
