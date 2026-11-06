@@ -97,7 +97,7 @@ import org.telegram.ui.recyclerview.LinearSmoothScrollerCustom;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager;
 
-import com.radolyn.ayugram.utils.LastSeenHelper;
+import top.nkbe.niagram.ayu.utils.LastSeenHelper;
 
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -14138,10 +14138,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             io.addGapIf(hideBottomNavigationBar && !NyaConfig.INSTANCE.getHideDividers().Bool());
             if (hideBottomNavigationBar) {
-                io.add(R.drawable.menu_recent, getString(R.string.RecentChats), () -> {
-                    io.dismiss();
-                    BackButtonMenuRecent.show(currentAccount, this, optionsItem);
-                });
+                BackButtonMenuRecent.addMenu(this, io);
             }
             if (hideBottomNavigationBar && NyaConfig.INSTANCE.getHideArchive().Bool()) {
                 io.add(R.drawable.msg_archive, getString(R.string.ArchivedChats), () -> {

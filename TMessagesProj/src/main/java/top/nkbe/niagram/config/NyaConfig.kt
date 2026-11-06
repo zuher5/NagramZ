@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import android.util.Base64
 import android.util.Pair
 import androidx.core.content.edit
-import com.radolyn.ayugram.utils.AyuGhostUtils
+import top.nkbe.niagram.ayu.utils.AyuGhostUtils
 import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.BuildVars
@@ -626,6 +626,12 @@ object NyaConfig {
             "DefaultHlsVideoQuality",
             ConfigItem.configTypeInt,
             0
+        )
+    val preferOriginalQuality =
+        addConfig(
+            "PreferOriginalQuality",
+            ConfigItem.configTypeBool,
+            false
         )
     val disableBotOpenButton =
         addConfig(
@@ -1937,19 +1943,21 @@ object NyaConfig {
 
     val preferredTranslateTargetLangList = ArrayList<String>()
     fun updatePreferredTranslateTargetLangList() {
-        AndroidUtilities.runOnUIThread({
-            preferredTranslateTargetLangList.clear()
-            val str = preferredTranslateTargetLang.String().trim()
-
-            if (str.isEmpty()) return@runOnUIThread
-
+        val str = preferredTranslateTargetLang.String().trim()
+        val list = ArrayList<String>()
+        if (str.isNotEmpty()) {
             val languages = str.replace('-', '_').split(",")
-            if (languages.isEmpty() || languages[0].trim().isEmpty()) return@runOnUIThread
-
-            languages.forEach { lang ->
-                preferredTranslateTargetLangList.add(lang.trim().lowercase())
+            for (lang in languages) {
+                val item = lang.trim().lowercase()
+                if (item.isNotEmpty()) {
+                    list.add(item)
+                }
             }
-        }, 1000)
+        }
+        synchronized(preferredTranslateTargetLangList) {
+            preferredTranslateTargetLangList.clear()
+            preferredTranslateTargetLangList.addAll(list)
+        }
     }
 
     private fun getIgnoreMutedCountLegacy(): Int {
