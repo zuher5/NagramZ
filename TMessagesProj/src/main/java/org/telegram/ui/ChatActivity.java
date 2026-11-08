@@ -14728,13 +14728,23 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void showSlowModeHint(View view, boolean show, CharSequence time) {
-        if (getParentActivity() == null || fragmentView == null || !show && (slowModeHint == null || !slowModeHint.isShowing())) {
+        if (getParentActivity() == null || fragmentView == null) {
+            return;
+        }
+        if (!show) {
+            if (slowModeHint != null && slowModeHint.isShowing()) {
+                slowModeHint.hide();
+            }
+            return;
+        }
+        if (slowModeHint == null) {
+            slowModeHint = addGlassHint(HintView2.DIRECTION_BOTTOM, 250, false, -1);
+        }
+        if (slowModeHint == null) {
             return;
         }
         slowModeHint.setText(AndroidUtilities.replaceTags(LocaleController.formatString("SlowModeHint", R.string.SlowModeHint, time)));
-        if (show) {
-            slowModeHint.showForView(view, true);
-        }
+        slowModeHint.showForView(view, true);
     }
 
     public void showTimerHint() {
@@ -40209,7 +40219,7 @@ public class ChatActivity extends BaseFragment implements
                         }
                     }
                     userInfoRow = rowCount++;
-                } else if ((UserObject.isReplyUser(currentUser) || currentUser != null && currentUser.bot && !MessagesController.isSupportUser(currentUser) && chatMode == MODE_DEFAULT) && endReached[0]) {
+                } else if ((UserObject.isReplyUser(currentUser) || currentUser != null && currentUser.bot && !NyaConfig.INSTANCE.getHideBotInfo().Bool() && !MessagesController.isSupportUser(currentUser) && chatMode == MODE_DEFAULT) && endReached[0]) {
                     botInfoRow = rowCount++;
                 }
 
@@ -40234,7 +40244,7 @@ public class ChatActivity extends BaseFragment implements
 
                 if (currentUser != null && !UserObject.isBot(currentUser) && !UserObject.isReplyUser(currentUser) && !UserInfoCell.isEmpty(getMessagesController().getPeerSettings(currentUser.id)) && !MessagesController.isSupportUser(currentUser) && chatMode == MODE_DEFAULT) {
                     userInfoRow = rowCount++;
-                } else if (UserObject.isReplyUser(currentUser) || currentUser != null && currentUser.bot && !MessagesController.isSupportUser(currentUser) && chatMode == MODE_DEFAULT) {
+                } else if (UserObject.isReplyUser(currentUser) || currentUser != null && currentUser.bot && !NyaConfig.INSTANCE.getHideBotInfo().Bool() && !MessagesController.isSupportUser(currentUser) && chatMode == MODE_DEFAULT) {
                     botInfoRow = rowCount++;
                 }
             }
@@ -40711,7 +40721,7 @@ public class ChatActivity extends BaseFragment implements
                         true,
                         currentUser == null ? 0 : currentUser.id,
                         mBotInfo != null ? mBotInfo.description : null,
-                        mBotInfo != null ? mBotInfo.description_document != null ? mBotInfo.description_document : mBotInfo.description_photo : null,
+                        mBotInfo != null && !NyaConfig.INSTANCE.getHideBotInfoMedia().Bool() ? mBotInfo.description_document != null ? mBotInfo.description_document : mBotInfo.description_photo : null,
                         mBotInfo,
                         setup ? DialogObject.getName(currentAccount, userInfo.bot_manager_id) : null
                     );

@@ -831,6 +831,7 @@ object NyaConfig {
     @JvmField val mapDriftingFixForGoogleMaps = addConfig("mapDriftingFixForGoogleMaps", ConfigItem.configTypeBool, true)
 
     @JvmField val localPremium = addConfig("localPremium", ConfigItem.configTypeBool, false)
+    @JvmField val enableSplashScreen = addConfig("EnableSplashScreen", ConfigItem.configTypeBool, true)
 
     @JvmField val usePersianCalendar = addConfig("UsePersianCalendar", ConfigItem.configTypeBool, false)
     @JvmField val displayPersianCalendarByLatin = addConfig("DisplayPersianCalendarByLatin", ConfigItem.configTypeBool, false)
@@ -1754,6 +1755,24 @@ object NyaConfig {
     val hideAvatarTtlBadge =
         addConfig(
             "HideAvatarTtlBadge",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val hideBotSubtitle =
+        addConfig(
+            "HideBotSubtitle",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val hideBotInfo =
+        addConfig(
+            "HideBotInfo",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val hideBotInfoMedia =
+        addConfig(
+            "HideBotInfoMedia",
             ConfigItem.configTypeBool,
             false
         )

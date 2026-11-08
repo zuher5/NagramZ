@@ -103,6 +103,7 @@
         <!-- usesCleartextTraffic for browser supporting opening http:// links -->
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="true"
             android:name="org.telegram.messenger.DefaultIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -117,6 +118,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.NekoIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -133,6 +135,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.NekoDarkIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -149,6 +152,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.MusheenIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -165,6 +169,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.SpaceIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -181,6 +186,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.CloudIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -197,6 +203,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.NeonIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -213,6 +220,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.MaterialIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -229,6 +237,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.ForkGramIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -246,6 +255,7 @@
 
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.TelegramIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -262,6 +272,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.VintageIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -278,6 +289,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.AquaIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -294,6 +306,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.PremiumIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -310,6 +323,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.TurboIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -326,6 +340,7 @@
         </activity-alias>
 
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:enabled="false"
             android:name="org.telegram.messenger.NoxIcon"
             android:targetActivity="org.telegram.ui.LaunchActivity"
@@ -438,6 +453,7 @@
                 android:value="subject_segment" />
         </activity>
         <activity-alias
+            android:theme="@style/Theme.TMessages.Start"
             android:name="org.telegram.ui.CallsActivity"
             android:targetActivity="org.telegram.ui.LaunchActivity"
             android:permission="android.permission.CALL_PHONE"
