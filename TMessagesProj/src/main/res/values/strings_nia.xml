@@ -511,6 +511,7 @@
     <string name="StorageSettings">Storage</string>
     <string name="MainTabsSettingsHeader">Main Tabs</string>
     <string name="MainTabsHideTitles">Hide Titles</string>
+    <string name="MainTabsLiquidGlass">Liquid Glass Effect</string>
     <string name="MainTabsHideContacts">Hide Contacts Tab</string>
     <string name="PasscodeShowMessagePreviewWhenLocked">Show Message Previews</string>
     <string name="PasscodeShowMessagePreviewWhenLockedAbout">Shows notification content even when passcode lock is active.</string>
@@ -912,4 +913,6 @@
     <string name="HideChatHeaderConnectionState">Hide connection status in chat header</string>
     <string name="HideFloatingDate">Hide floating date</string>
     <string name="HideAvatarTtlBadge">Hide auto-delete timer on avatars</string>
+    <string name="HideFeaturedStickersAndEmoji">Hide Featured Stickers and Emoji</string>
+    <string name="HideFeaturedStickersAndEmojiNotice">Do not display featured or trending sticker packs and emoji sets in the picker.</string>
 </resources>

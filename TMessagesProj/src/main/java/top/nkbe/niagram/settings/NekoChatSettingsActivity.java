@@ -52,9 +52,9 @@ import org.telegram.ui.Components.UndoView;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProviderThemed;
-import org.telegram.ui.Components.blur3.source.BlurredBackgroundSource;
-import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceColor;
-import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceWrapped;
+import org.telegram.utils.glass.source.GlassSource;
+import org.telegram.utils.glass.source.GlassSourceColor;
+import org.telegram.utils.glass.source.GlassSourceWrapped;
 import org.telegram.ui.Components.chat.WallpaperBitmapProvider;
 
 import java.util.ArrayList;
@@ -170,6 +170,7 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final AbstractConfigCell showGroupMemberJoinDateRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.INSTANCE.getShowGroupMemberJoinDate(), getString(R.string.ShowGroupMemberJoinDateNotice)));
     private final AbstractConfigCell autoReactionDetectRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.INSTANCE.getAutoReactionDetect(), getString(R.string.AutoReactionDetectNotice)));
     private final AbstractConfigCell disableTrendingRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.disableTrending));
+    private final AbstractConfigCell hideFeaturedStickersAndEmojiRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.hideFeaturedStickersAndEmoji, getString(R.string.HideFeaturedStickersAndEmojiNotice)));
     private final AbstractConfigCell disableGlobalSearchRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.disableGlobalSearch));
     private final AbstractConfigCell disableZalgoSymbolsRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.INSTANCE.getZalgoFilter(), getString(R.string.ZalgoFilterNotice)));
     private final AbstractConfigCell showOnlineStatusRow = cellGroup.appendCell(new ConfigCellTextCheck(NyaConfig.INSTANCE.getShowOnlineStatus(), getString(R.string.ShowOnlineStatusNotice)));
@@ -927,13 +928,13 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
             lastIsBlurEnabled = isBlurEnabled;
             lastIsLiquidGlassEnabled = isLiquidGlassEnabled;
 
-            BlurredBackgroundSource source;
+            GlassSource source;
             if (isBlurEnabled && wallpaper != null) {
                 source = wallpaperBitmapProvider.updateSourceFromBackgroundViewDrawable(wallpaper);
             } else {
-                source = new BlurredBackgroundSourceColor();
+                source = new GlassSourceColor();
             }
-            BlurredBackgroundSourceWrapped wrappedSource = new BlurredBackgroundSourceWrapped();
+            GlassSourceWrapped wrappedSource = new GlassSourceWrapped();
             wrappedSource.setSource(source);
             glassFactory = new BlurredBackgroundDrawableViewFactory(wrappedSource);
             colorProvider = new BlurredBackgroundColorProviderThemed(resourcesProvider, Theme.key_chat_messagePanelBackground);

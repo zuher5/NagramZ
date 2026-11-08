@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
+import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
@@ -428,7 +429,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         });
 
         // na: action bar menu
-        ActionBarMenu menu = actionBar.createMenu();
+        SimpleActionBarMenu menu = simpleActionBar.createMenu();
         otherItem = menu.addItem(na_menu_other, R.drawable.ic_ab_other);
         otherItem.setContentDescription(LocaleController.getString("AccDescrMoreOptions", R.string.AccDescrMoreOptions));
         otherItem.addSubItem(na_menu_add_input_telegram, LocaleController.getString("AddProxyTelegram", R.string.AddProxyTelegram)).setOnClickListener((v) -> presentFragment(new ProxySettingsActivity()));

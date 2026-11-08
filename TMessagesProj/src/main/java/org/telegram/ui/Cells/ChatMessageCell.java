@@ -104,6 +104,7 @@ import androidx.core.math.MathUtils;
 import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.AppGlobalConfig;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BotForumHelper;
 import org.telegram.messenger.BotInlineKeyboard;
@@ -1672,7 +1673,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private float drawTimeY;
     public StaticLayout timeLayout;
     public int timeWidth;
-    int timeTextWidth;
+    public int timeTextWidth;
     public int timeX;
     public int signWidth;
     CharSequence currentTimeString;
@@ -1716,7 +1717,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private int forwardsTextWidth;
     private String currentForwardsString;
 
-    private StaticLayout repliesLayout;
+    StaticLayout repliesLayout;
     private int repliesTextWidth;
     private String currentRepliesString;
 
@@ -5246,7 +5247,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 if (lastTime != currentProgress) {
                     lastTime = currentProgress;
                     String timeString = AndroidUtilities.formatShortDuration(currentProgress, (int) duration);
-                    timeString = String.format("%s・%s", timeString, AndroidUtilities.formatFileSize(documentAttach.size));
+                    timeString = String.format("%s�?s", timeString, AndroidUtilities.formatFileSize(documentAttach.size));
                     int timeWidth = (int) Math.ceil(Theme.chat_audioTimePaint.measureText(timeString));
                     durationLayout = new StaticLayout(timeString, Theme.chat_audioTimePaint, timeWidth, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
                 }
@@ -6720,7 +6721,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
             if (botDraftTypingAnimator != null) {
                 // For TYPE_ARTICLE the rich layout is built further down and feeds its own
-                // RichBlock list to the animator — skip the text-block setBlocks here.
+                // RichBlock list to the animator �?skip the text-block setBlocks here.
                 if (messageObject.type != MessageObject.TYPE_ARTICLE) {
                     botDraftTypingAnimator.setBlocks(messageObject.textLayoutBlocks);
                 }
@@ -13899,11 +13900,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             if (botDraftTypingAnimator != null && botDraftTypingAnimator.isRunning()) {
                 drawMessageText(textX, textY, canvas, currentMessageObject.textLayoutBlocks, currentMessageObject.textXOffset, true, 1, true, false, false);
             } else {
-                if (!transitionParams.animateTranslationText) {
-                    drawMessageText(textX, textY, canvas, transitionParams.animateOutTextBlocks, transitionParams.animateOutTextXOffset, false, (1.0f - transitionParams.animateChangeProgress), true, false, false);
-                }
-                final float incomingProgress = getTranslationIncomingTextProgress();
-                drawMessageText(textX, textY + getTranslationIncomingTextOffsetY(incomingProgress), canvas, currentMessageObject.textLayoutBlocks, currentMessageObject.textXOffset, true, incomingProgress, true, false, false);
+                drawMessageText(textX, textY, canvas, transitionParams.animateOutTextBlocks, transitionParams.animateOutTextXOffset, false, (1.0f - transitionParams.animateChangeProgress), true, false, false);
+                drawMessageText(textX, textY, canvas, currentMessageObject.textLayoutBlocks, currentMessageObject.textXOffset, true, transitionParams.animateChangeProgress, true, false, false);
             }
             canvas.restore();
         } else if (transitionParams.animateLinkAbove && currentBackgroundDrawable != null) {
@@ -15731,7 +15729,42 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
             }
         }
-        timeString = timeString(currentMessageObject, messageObject, edited, currentMessagesGroup != null ? currentMessagesGroup.getMaxEditDate() : messageObject.messageOwner.edit_date);
+        boolean showAyuDeletedMark = ayuDeleted && shouldShowAyuDeletedMark(currentMessageObject);
+        boolean showBookmarkInTime = false;
+        int senderNameColor = 0;
+        if (NyaConfig.INSTANCE.getShowAddToBookmark().Bool()) {
+            boolean groupHasBookmark = false;
+            if (currentMessagesGroup != null && currentMessagesGroup.messages != null && currentMessagesGroup.messages.size() > 1) {
+                final long dialogId = messageObject.getDialogId();
+                for (int a = 0, size = currentMessagesGroup.messages.size(); a < size; a++) {
+                    MessageObject object = currentMessagesGroup.messages.get(a);
+                    if (BookmarksHelper.isBookmarked(currentAccount, dialogId, object.getId())) {
+                        groupHasBookmark = true;
+                        break;
+                    }
+                }
+            }
+            boolean isBookmarked = BookmarksHelper.isBookmarked(currentAccount, messageObject.getDialogId(), messageObject.getId());
+            showBookmarkInTime = groupHasBookmark || (isBookmarked && (!shouldDrawNameLayoutForMessage(messageObject) || isSideMenuEnabled));
+            if (showBookmarkInTime) {
+                senderNameColor = getSenderNameColor(isBookmarked);
+            }
+            drawBookmarkInTime = showBookmarkInTime;
+        }
+        final int editedDate = edited && currentMessagesGroup != null ? currentMessagesGroup.getMaxEditDate() : messageObject.messageOwner.edit_date;
+        if (edited && !showAyuDeletedMark) {
+            timeString = TimeStringHelper.createEditedString(currentMessageObject, translated, showBookmarkInTime, senderNameColor, editedDate);
+        } else if (!edited && showAyuDeletedMark) {
+            timeString = TimeStringHelper.createDeletedString(currentMessageObject, edited, translated, showBookmarkInTime, senderNameColor);
+        } else if (edited && showAyuDeletedMark) {
+            timeString = TimeStringHelper.createDeletedString(currentMessageObject, edited, translated, showBookmarkInTime, senderNameColor, editedDate);
+        } else if (translated) {
+            timeString = TimeStringHelper.createTranslatedString(currentMessageObject, false, showBookmarkInTime, senderNameColor);
+        } else if (showBookmarkInTime) {
+            timeString = TimeStringHelper.createBookmarkedString(currentMessageObject, senderNameColor);
+        } else {
+            timeString = timeString(currentMessageObject, messageObject, edited, editedDate);
+        }
         if (currentMessageObject.messageOwner.video_processing_pending) {
             timeString = formatString(R.string.ScheduledTimeApprox, timeString);
         }
@@ -15741,26 +15774,27 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             }
             ((SpannableStringBuilder) timeString).append(" | ").append(String.valueOf(messageObject.messageOwner.id));
         }
-        currentTimeString = new SpannableStringBuilder(timeString);
+
+        SpannableStringBuilder currentTimeStringBuilder = new SpannableStringBuilder(timeString);
         if (signString != null) {
             if (messageObject.messageOwner.via_business_bot_id != 0) {
-                currentTimeString.append(", ");
+                currentTimeStringBuilder.append(", ");
             } else if (messageObject.messageOwner.fwd_from != null && messageObject.messageOwner.fwd_from.imported) {
-                currentTimeString.insert(0, " ");
+                currentTimeStringBuilder.insert(0, " ");
             } else {
                 String toInsert = edited && !NyaConfig.INSTANCE.getShowEditedIcon().Bool() ? ", " : " ";
-                currentTimeString.insert(0, toInsert);
+                currentTimeStringBuilder.insert(0, toInsert);
             }
         }
         if (currentMessageObject.isStakedDice()) {
-            currentTimeString = new SpannableStringBuilder(TextUtils.concat("💎", StarsIntroActivity.formatTON(currentMessageObject.getStakedDiceAmount()), "  ", currentTimeString));
-            currentTimeString = StarsIntroActivity.replaceDiamond(currentTimeString, 0.55f, null, 0, dp(-.33f), 1.05f);
+            currentTimeStringBuilder = new SpannableStringBuilder(TextUtils.concat("💎", StarsIntroActivity.formatTON(currentMessageObject.getStakedDiceAmount()), "  ", currentTimeStringBuilder));
+            currentTimeStringBuilder = new SpannableStringBuilder(StarsIntroActivity.replaceDiamond(currentTimeStringBuilder, 0.55f, null, 0, dp(-.33f), 1.05f));
         }
         final long starsPrice = currentMessageObject.getDialogId() < 0 ? getStarsPrice() : 0;
         if (starsPrice > 0) {
             SpannableStringBuilder starsString = new SpannableStringBuilder("⭐️" + AndroidUtilities.formatWholeNumber((int) starsPrice, 0) + "  ");
-            starsString.append(currentTimeString);
-            currentTimeString = StarsIntroActivity.replaceStars(starsString, 0.8f, null, 0, dp(-.33f), 0.94f);
+            starsString.append(currentTimeStringBuilder);
+            currentTimeStringBuilder = new SpannableStringBuilder(StarsIntroActivity.replaceStars(starsString, 0.8f, null, 0, dp(-.33f), 0.94f));
         }
         if (currentMessageObject.messageOwner != null && currentMessageObject.messageOwner.schedule_repeat_period != 0) {
             final int period = currentMessageObject.messageOwner.schedule_repeat_period;
@@ -15783,10 +15817,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 prefix = formatString(R.string.MessageScheduledRepeatSeconds, period);
             }
             if (prefix != null) {
-                currentTimeString.insert(0, ", ");
-                currentTimeString.insert(0, prefix);
+                currentTimeStringBuilder.insert(0, ", ");
+                currentTimeStringBuilder.insert(0, prefix);
             }
         }
+        currentTimeString = currentTimeStringBuilder;
         timeTextWidth = timeWidth = (int) Math.ceil(Theme.chat_timePaint.measureText(currentTimeString, 0, currentTimeString == null ? 0 : currentTimeString.length()));
         if (timeString instanceof SpannableStringBuilder) {
             if (edited && NyaConfig.INSTANCE.getShowEditedIcon().Bool() && TimeStringHelper.editedDrawable != null) {
@@ -15897,7 +15932,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     width = widthForSign;
                 }
             }
-            SpannableStringBuilder currentTimeStringBuilder = new SpannableStringBuilder();
+            currentTimeStringBuilder = new SpannableStringBuilder();
             if (messageObject.messageOwner.via_business_bot_id != 0) {
                 currentTimeStringBuilder.append(currentTimeString);
                 currentTimeStringBuilder.append(signString);
@@ -22672,7 +22707,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             Theme.chat_msgMediaMenuDrawable.setAlpha((int) (oldAlpha * controlsAlpha * (1.0f - checkBoxAnimationProgress)));
                         } else {
                             Theme.chat_msgMediaMenuDrawable.setAlpha((int) (oldAlpha * controlsAlpha));
-                        }*/
+                        }
                         setDrawableBounds(Theme.chat_msgMediaMenuDrawable, otherX = (int) (photoImage.getImageX() + photoImage.getImageWidth() - dp(14)), otherY = (int) (photoImage.getImageY() + dp(8.1f)));
                         // Theme.chat_msgMediaMenuDrawable.draw(canvas);
                         // Theme.chat_msgMediaMenuDrawable.setAlpha(oldAlpha);

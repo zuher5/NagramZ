@@ -497,6 +497,7 @@
     <string name="StorageSettings">存储</string>
     <string name="MainTabsSettingsHeader">主标签页</string>
     <string name="MainTabsHideTitles">隐藏标题</string>
+    <string name="MainTabsLiquidGlass">液态玻璃效果</string>
     <string name="MainTabsHideContacts">隐藏联系人标签页</string>
     <string name="PasscodeShowMessagePreviewWhenLocked">显示消息预览</string>
     <string name="PasscodeShowMessagePreviewWhenLockedAbout">密码锁启用时仍显示通知内容。</string>
@@ -889,4 +890,6 @@
     <string name="HideChatHeaderConnectionState">隐藏聊天标题栏的连接状态</string>
     <string name="HideFloatingDate">隐藏悬浮日期</string>
     <string name="HideAvatarTtlBadge">隐藏头像上的自动删除计时标志</string>
+    <string name="HideFeaturedStickersAndEmoji">隐藏推荐贴纸与表情</string>
+    <string name="HideFeaturedStickersAndEmojiNotice">在选择器中不展示热门推荐的贴纸包与表情包。</string>
 </resources>
