@@ -1,9 +1,9 @@
 package top.nkbe.niagram.parts
 
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -30,6 +30,7 @@ import top.nkbe.niagram.utils.AppScope
 import top.nkbe.niagram.config.NyaConfig
 import java.util.Locale
 import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 
 // const val TRANSLATE_MODE_WITH_ORIGINAL_OFF = 0
 const val TRANSLATE_MODE_WITH_ORIGINAL_MANUAL_ONLY = 1
@@ -277,6 +278,7 @@ fun ChatActivity.translateMessages(
 
     // Perform translations concurrently
     val dispatcher = Dispatchers.IO.limitedParallelism(5)
+    val failures = TranslationFailures()
 
     AppScope.io.launch {
         supervisorScope {
@@ -289,11 +291,49 @@ fun ChatActivity.translateMessages(
                         targetLocale,
                         targetLanguage,
                         translatorMode,
-                        canReuseCache
+                        canReuseCache,
+                        failures
                     )
                 }
             }.joinAll()
         }
+        showTranslationFailures(failures, targetLocale, provider)
+    }
+}
+
+private class TranslationFailures {
+    val items = ConcurrentLinkedQueue<Pair<MessageObject, Throwable>>()
+
+    fun add(controller: TranslateController, msg: MessageObject, throwable: Throwable) {
+        controller.removeAsTranslatingItem(msg)
+        controller.removeAsManualTranslate(msg)
+        items.add(msg to throwable)
+    }
+}
+
+private fun ChatActivity.showTranslationFailures(
+    failures: TranslationFailures,
+    targetLocale: Locale,
+    provider: Int,
+) {
+    if (failures.items.isEmpty()) return
+    val activity = parentActivity ?: return
+    val failed = failures.items.map { it.first }.distinct()
+    val throwables = failures.items.map { it.second }
+    val message = throwables
+        .map { it.message ?: it.javaClass.simpleName }
+        .distinct()
+        .take(3)
+        .joinToString("\n\n")
+
+    AlertUtil.showTransFailedDialog(
+        activity,
+        throwables.all { it is UnsupportedOperationException },
+        message,
+        // After switching provider, retry with the new global one instead of the pinned `provider`.
+        { translateMessages(targetLocale, 0, failed) }
+    ) {
+        translateMessages(targetLocale, provider, failed)
     }
 }
 
@@ -304,6 +344,7 @@ private suspend fun ChatActivity.translateSingleMessage(
     targetLanguage: String,
     translatorMode: Int,
     canReuseCache: Boolean,
+    failures: TranslationFailures,
 ) {
     val needsSummary = msg.needsSummaryTranslation(canReuseCache, targetLanguage)
     val needsOriginal = msg.needsOriginalTranslation(canReuseCache, targetLanguage)
@@ -316,23 +357,24 @@ private suspend fun ChatActivity.translateSingleMessage(
     // Translate summary if needed
     if (needsSummary) {
         val success =
-            translateSummary(msg, targetLocale, provider, llmContext)
+            translateSummary(msg, targetLocale, provider, llmContext, failures)
         if (!success) return
     }
 
     // Translate original content if needed
     if (needsOriginal) {
         val success = when {
-            msg.isRich -> translateRichMessageContent(msg, targetLocale)
-            msg.isPoll -> translatePoll(msg, targetLocale, provider) &&
+            msg.isRich -> translateRichMessageContent(msg, targetLocale, failures)
+            msg.isPoll -> translatePoll(msg, targetLocale, provider, failures) &&
                     (msg.messageOwner.message.isNullOrEmpty() ||
-                            translateMessageContent(msg, targetLocale, provider, translatorMode, llmContext))
+                            translateMessageContent(msg, targetLocale, provider, translatorMode, llmContext, failures))
             else -> translateMessageContent(
                 msg,
                 targetLocale,
                 provider,
                 translatorMode,
                 llmContext,
+                failures,
             )
         }
         if (!success) return
@@ -350,6 +392,7 @@ private suspend fun ChatActivity.translateSummary(
     targetLocale: Locale,
     provider: Int,
     llmContext: String?,
+    failures: TranslationFailures,
 ): Boolean {
     val summaryText = msg.messageOwner.summaryText ?: return false
 
@@ -357,9 +400,7 @@ private suspend fun ChatActivity.translateSummary(
     val translatedSummary = runCatching {
         translateText(targetLocale, summaryText.text, summaryText.entities, provider, llmContext)
     }.getOrElse { e ->
-        handleTranslationError(parentActivity, e, msg, translateController) {
-            translateMessages(targetLocale, provider, listOf(msg))
-        }
+        failures.add(translateController, msg, e)
         return false
     }
 
@@ -372,7 +413,8 @@ private suspend fun ChatActivity.translateSummary(
 
 private suspend fun ChatActivity.translateRichMessageContent(
     msg: MessageObject,
-    target: Locale
+    target: Locale,
+    failures: TranslationFailures,
 ): Boolean {
     val richMessage = msg.messageOwner.rich_message ?: return false
     val targetLanguage = target.locale2code
@@ -392,9 +434,7 @@ private suspend fun ChatActivity.translateRichMessageContent(
         }
         RichMessageTransHelper.hasFullCache(richMessage, targetLanguage)
     }.getOrElse { e ->
-        handleTranslationError(parentActivity, e, msg, translateController) {
-            translateMessages(target, 0, listOf(msg))
-        }
+        failures.add(translateController, msg, e)
         false
     }
 }
@@ -402,49 +442,33 @@ private suspend fun ChatActivity.translateRichMessageContent(
 private suspend fun ChatActivity.translatePoll(
     msg: MessageObject,
     target: Locale,
-    provider: Int
+    provider: Int,
+    failures: TranslationFailures,
 ): Boolean {
-    val poll = (msg.messageOwner.media as TLRPC.TL_messageMediaPoll).poll
-
-    // Translate question
-    val translatedQuestion = runCatching {
-        Translator.translate(target, poll.question.text, provider)
-    }.getOrElse { e ->
-        handleTranslationError(parentActivity, e, msg, translateController) {
-            translateMessages(target, provider, listOf(msg))
-        }
-        return false
-    }
-    poll.translatedQuestion = translatedQuestion
-
-    // Translate answers
-    for (answer in poll.answers) {
-        val translatedAnswer = runCatching {
-            Translator.translate(target, answer.text.text, provider)
-        }.getOrElse { e ->
-            handleTranslationError(parentActivity, e, msg, translateController) {
-                translateMessages(target, provider, listOf(msg))
-            }
-            return false
-        }
-        answer.translatedText = translatedAnswer
-    }
-
-    // Translate solution / explanation (if present)
     val media = msg.messageOwner.media as TLRPC.TL_messageMediaPoll
-    if (media.results != null && !media.results.solution.isNullOrEmpty()) {
-        val translatedSolution = runCatching {
-            Translator.translate(target, media.results.solution, provider)
-        }.getOrElse { e ->
-            handleTranslationError(parentActivity, e, msg, translateController) {
-                translateMessages(target, provider, listOf(msg))
-            }
-            return false
-        }
-        media.results.translatedSolution = translatedSolution
-    }
+    val poll = media.poll
+    val solution = media.results?.solution?.takeIf { it.isNotEmpty() }
 
-    return true
+    // Question, answers and solution are independent requests: run them together.
+    return runCatching {
+        coroutineScope {
+            val question = async { Translator.translate(target, poll.question.text, provider) }
+            val answers = poll.answers.map { answer ->
+                async { Translator.translate(target, answer.text.text, provider) }
+            }
+            val translatedSolution = solution?.let { async { Translator.translate(target, it, provider) } }
+
+            poll.translatedQuestion = question.await()
+            answers.awaitAll().forEachIndexed { index, translated ->
+                poll.answers[index].translatedText = translated
+            }
+            translatedSolution?.let { media.results.translatedSolution = it.await() }
+        }
+        true
+    }.getOrElse { e ->
+        failures.add(translateController, msg, e)
+        false
+    }
 }
 
 private suspend fun ChatActivity.translateMessageContent(
@@ -452,7 +476,8 @@ private suspend fun ChatActivity.translateMessageContent(
     target: Locale,
     provider: Int,
     translatorMode: Int,
-    llmContext: String?
+    llmContext: String?,
+    failures: TranslationFailures,
 ): Boolean {
     val result = runCatching {
         translateText(
@@ -467,9 +492,7 @@ private suspend fun ChatActivity.translateMessageContent(
             }
         }
     }.getOrElse { e ->
-        handleTranslationError(parentActivity, e, msg, translateController) {
-            translateMessages(target, provider, listOf(msg))
-        }
+        failures.add(translateController, msg, e)
         return false
     }
 
@@ -719,27 +742,6 @@ private suspend fun translateText(
         }
     } else {
         Translator.translate(target, text, safeEntities, provider)
-    }
-}
-
-private fun handleTranslationError(
-    parentActivity: Context?,
-    throwable: Throwable,
-    messageObject: MessageObject,
-    controller: TranslateController,
-    retryAction: () -> Unit
-) {
-    controller.removeAsTranslatingItem(messageObject)
-    controller.removeAsManualTranslate(messageObject)
-
-    if (parentActivity != null) {
-        AlertUtil.showTransFailedDialog(
-            parentActivity,
-            throwable is UnsupportedOperationException,
-            throwable.message ?: throwable.javaClass.simpleName
-        ) {
-            retryAction()
-        }
     }
 }
 

@@ -2,6 +2,8 @@ package top.nkbe.niagram.translate.source
 
 import kotlinx.coroutines.ThreadContextElement
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -65,12 +67,18 @@ object LLMTranslator : Translator {
 
     private fun currentTranslationContext(): String? = translationContextThreadLocal.get()
 
+    private val apiKeyLock = Any()
     private var apiKeys: List<String> = emptyList()
     private val apiKeyIndex = AtomicInteger(0)
     private var currentProvider = -1
     private var cachedKeyString: String? = null
 
-    private fun updateApiKeys() {
+    // Caps in-flight LLM requests (auto-translate launches one coroutine per message); scales with the key count.
+    private const val REQUESTS_PER_KEY = 2
+    private const val MAX_CONCURRENT_REQUESTS = 8
+    private var requestPermits = Semaphore(REQUESTS_PER_KEY)
+
+    private fun updateApiKeysLocked() {
         val llmProvider = NyaConfig.llmProviderPreset.Int()
         val keyConfig = LlmConfig.getApiKeyConfigItem(llmProvider)
         val key = keyConfig.String()
@@ -87,19 +95,25 @@ object LLMTranslator : Translator {
         cachedKeyString = key
         currentProvider = llmProvider
         apiKeyIndex.set(0)
+        requestPermits = Semaphore((apiKeys.size * REQUESTS_PER_KEY).coerceIn(REQUESTS_PER_KEY, MAX_CONCURRENT_REQUESTS))
     }
 
-    private fun getNextApiKey(): String? {
-        updateApiKeys()
-        if (apiKeys.isEmpty()) {
-            return null
-        }
+    private fun getRequestPermits(): Semaphore = synchronized(apiKeyLock) {
+        updateApiKeysLocked()
+        requestPermits
+    }
 
-        val index = apiKeyIndex.getAndIncrement() % apiKeys.size
-        if (apiKeyIndex.get() >= apiKeys.size * 2) {
-            apiKeyIndex.set(index + 1)
+    private fun getApiKeysSnapshot(): Pair<List<String>, Int> = synchronized(apiKeyLock) {
+        updateApiKeysLocked()
+        if (apiKeys.isEmpty()) {
+            return emptyList<String>() to 0
         }
-        return apiKeys[index]
+        val keys = apiKeys
+        val startIndex = Math.floorMod(apiKeyIndex.getAndIncrement(), keys.size)
+        if (apiKeyIndex.get() >= keys.size * 2) {
+            apiKeyIndex.set(startIndex + 1)
+        }
+        keys to startIndex
     }
 
     override suspend fun doTranslate(
@@ -157,6 +171,8 @@ object LLMTranslator : Translator {
                 delay(waitTimeMillis.milliseconds)
             } catch (e: UnsupportedOperationException) {
                 throw e
+            } catch (e: RetryableLlmException) {
+                throw e
             } catch (e: Exception) {
                 if (BuildVars.LOGS_ENABLED) {
                     AndroidUtil.showErrorDialog("Error during LLM translation, falling back to GoogleAppTranslator.\n$e")
@@ -170,8 +186,8 @@ object LLMTranslator : Translator {
         return GoogleAppTranslator.doTranslate(from, to, query, entities)
     }
 
-    @Throws(IOException::class, RateLimitException::class, UnsupportedOperationException::class)
-    private fun doLLMTranslate(to: String, query: String): String {
+    @Throws(IOException::class, RateLimitException::class, UnsupportedOperationException::class, RetryableLlmException::class)
+    private suspend fun doLLMTranslate(to: String, query: String): String {
         val llmProviderPreset = NyaConfig.llmProviderPreset.Int()
         val model = LlmConfig.getEffectiveModelName(llmProviderPreset)
         val rawContext = currentTranslationContext()
@@ -182,9 +198,10 @@ object LLMTranslator : Translator {
             return cached
         }
 
-        val apiKey = getNextApiKey() ?: throw UnsupportedOperationException(getString(R.string.ApiKeyNotSet))
-        val apiKeyForLog = apiKey.takeLast(2)
-        FileLog.d("createPost: Bearer $apiKeyForLog")
+        val (keys, startIndex) = getApiKeysSnapshot()
+        if (keys.isEmpty()) {
+            throw UnsupportedOperationException(getString(R.string.ApiKeyNotSet))
+        }
 
         val apiUrl = LlmConfig.getEffectiveBaseUrl(llmProviderPreset)
 
@@ -220,29 +237,66 @@ object LLMTranslator : Translator {
         }
         FileLog.d("Requesting LLM API with model: $model, messages: $messages")
 
-        val response = if (LlmConfig.isGeminiNative(llmProviderPreset)) {
-            GeminiNativeClient.generateContent(llmProviderPreset, apiUrl, apiKey, model, messages)
-        } else {
-            OpenAICompatClient.chatCompletions(llmProviderPreset, apiUrl, apiKey, model, messages)
-        }
+        val useGeminiNative = LlmConfig.isGeminiNative(llmProviderPreset)
+        var lastResponse: top.nkbe.niagram.llm.net.LlmResponse<String>? = null
+        getRequestPermits().withPermit {
+            for (attempt in keys.indices) {
+                val apiKey = keys[(startIndex + attempt) % keys.size]
+                val apiKeyForLog = apiKey.takeLast(2)
+                FileLog.d("createPost: Bearer $apiKeyForLog")
 
-        if (!response.isSuccess) {
-            val code = response.httpCode()
-            val error = response.error() ?: getString(R.string.UnknownError)
-            val apiKeyNotSet = getString(R.string.ApiKeyNotSet)
-            when {
-                code == 429 -> throw RateLimitException("LLM API rate limit exceeded")
-                code in 400..499 || (code == 0 && error == apiKeyNotSet) -> throw UnsupportedOperationException(error)
-                else -> throw IOException(error)
+                val response = if (useGeminiNative) {
+                    GeminiNativeClient.generateContent(llmProviderPreset, apiUrl, apiKey, model, messages)
+                } else {
+                    OpenAICompatClient.chatCompletions(llmProviderPreset, apiUrl, apiKey, model, messages)
+                }
+                lastResponse = response
+
+                if (response.isSuccess) {
+                    val rawResult = response.data()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: throw IOException("LLM API returned empty content")
+                    val cleanedResult = cleanTranslationResult(rawResult)
+                    TranslationCache.put(query, to, model, rawContext, cleanedResult)
+                    return cleanedResult
+                }
+
+                val code = response.httpCode()
+                val canFailoverKey = (code == 401 || code == 403 || code == 429) && attempt + 1 < keys.size
+                if (canFailoverKey) {
+                    FileLog.d("LLM API key attempt ${attempt + 1}/${keys.size} failed with HTTP $code, failing over to next key")
+                    continue
+                }
+                break
             }
         }
 
-        val rawResult = response.data()
-            ?.takeIf { it.isNotEmpty() }
-            ?: throw IOException("LLM API returned empty content")
-        val cleanedResult = cleanTranslationResult(rawResult)
-        TranslationCache.put(query, to, model, rawContext, cleanedResult)
-        return cleanedResult
+        val failed = lastResponse ?: throw IOException(getString(R.string.UnknownError))
+        val code = failed.httpCode()
+        val error = failed.error() ?: getString(R.string.UnknownError)
+        val apiKeyNotSet = getString(R.string.ApiKeyNotSet)
+        val formattedError = formatLlmError(code, error)
+        when {
+            code == 429 -> throw RateLimitException("LLM API rate limit exceeded")
+            isLocationUnsupportedError(error) -> throw RetryableLlmException(formattedError)
+            code in 400..499 || (code == 0 && error == apiKeyNotSet) -> throw UnsupportedOperationException(formattedError)
+            else -> throw IOException(formattedError)
+        }
+    }
+
+    private fun isLocationUnsupportedError(error: String): Boolean {
+        val lower = error.lowercase(java.util.Locale.ROOT)
+        return lower.contains("location is not supported") || lower.contains("failed_precondition")
+    }
+
+    private fun formatLlmError(code: Int, error: String): String {
+        val hint = when {
+            isLocationUnsupportedError(error) -> getString(R.string.LlmErrorLocationUnsupported)
+            code == 401 || code == 403 -> getString(R.string.LlmErrorUnauthorized)
+            code == 404 -> getString(R.string.LlmErrorModelNotFound)
+            else -> null
+        }
+        return if (!hint.isNullOrEmpty()) "$hint\n\n$error" else error
     }
 
     private fun cleanTranslationResult(raw: String): String {
@@ -302,4 +356,5 @@ Rules:
     }
 
     class RateLimitException(message: String) : Exception(message)
+    class RetryableLlmException(message: String) : Exception(message)
 }
