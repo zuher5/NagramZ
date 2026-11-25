@@ -14701,6 +14701,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 allowCaption = cropItem.getVisibility() == View.VISIBLE;
             }
             needCaptionLayout = allowCaption && (placeProvider == null || placeProvider.allowCaption());
+            if (parentChatActivity != null) {
+                captionEdit.setChatInfo(parentChatActivity.chatInfo);
+                topCaptionEdit.setChatInfo(parentChatActivity.chatInfo);
+            }
             if (parentChatActivity != null && captionEdit.mentionContainer != null) {
                 captionEdit.mentionContainer.getAdapter().setChatInfo(parentChatActivity.chatInfo);
                 captionEdit.mentionContainer.getAdapter().setNeedUsernames(parentChatActivity.currentChat != null);
@@ -14937,6 +14941,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             } else {
                 bottomLayout.setVisibility(View.GONE);
                 bottomLayout.setTag(null);
+                setVideoPlayerControlVisible(false, animated);
             }
             if (isInvoice) {
                 setItemVisible(masksItem, false, animated);
